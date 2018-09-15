@@ -81,29 +81,43 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 // 応答の最後に追加するテンプレート
-const TEMPLATE_INQUIRY = '「1杯目をお酌して」のように呼びかけて下さい。';
+const TEMPLATE_INQUIRY = '「いっぱいめをお酌して」のように呼びかけて下さい。';
+var _count = [];
+var _id = [];
+var _kind = [];//'さんごー缶';
+var _tipTime = [];//new Date().getTime();
+var _tipIndex = 0;
 
 const clovaSkillHandler = clova.Client
   .configureSkill()
   // スキルの起動リクエスト
   .onLaunchRequest(responseHelper => {
+    console.log(`onLaunchRequest`);
+    responseHelper.setSessionAttributes({});
+    TimeoutMessage(responseHelper);
     responseHelper.setSimpleSpeech({
       lang: 'ja',
       type: 'PlainText',
-      value: `「遠隔お酌」が起動されました。${TEMPLATE_INQUIRY}`,
+      value: `こんにちは、私は「遠隔お酌」です。一緒に楽しい時間を過ごしましょうね。${TEMPLATE_INQUIRY}`,
     });
+    GetUser(responseHelper);    // ユーザごとの初期値を設定するため
   })
   // カスタムインテント or ビルトインインテント
   .onIntentRequest(responseHelper => {
+    console.log(`onIntentRequest`);
+    TimeoutMessage(responseHelper);
     const intent = responseHelper.getIntentName();
-    let speech;
+//    let speech;
     switch (intent) {
       // ユーザーのインプットが星座だと判別された場合。
-      case 'SetId':
-        SetId(responseHelper);
+      case 'SetIdIntent':
+        SetIdIntent(responseHelper);
         break;
-      case 'GetId':
-        GetId(responseHelper);
+      case 'GetIdIntent':
+        GetIdIntent(responseHelper);
+        break;
+      case 'SetBottleIntent':
+        SetBottleIntent(responseHelper);
         break;
       case 'PourIntent':
         PourIntent(responseHelper);
@@ -133,6 +147,8 @@ const clovaSkillHandler = clova.Client
   // スキルの終了リクエスト
   .onSessionEndedRequest(responseHelper => {
     console.log(`onSessionEndedRequest`);
+    setTimeout(move0, 10);
+    setTimeout(move0, 1000);   // 念のため
   })
   .handle();
 
@@ -149,38 +165,46 @@ app.listen(port, () => {
   console.log(`Server running on ${port}`);
 });
 
+function TimeoutMessage(responseHelper) {
+  var speech = {
+    lang: 'ja',
+    type: 'PlainText',
+    value: `もう一杯どうですか？。${TEMPLATE_INQUIRY}`
+  };
+  responseHelper.setSimpleSpeech(speech, true);
+}
 
 function FortuneIntent(responseHelper) {
   console.log(`FortuneIntent`);
   // 星座を取得
-  const slots = responseHelper.getSlots()
+  const slots = responseHelper.getSlots();
   // スロット名を間違って付けてしまった場合
   if (!('zodiac_signs' in slots)) {
-    speech = {
+    var speech = {
       lang: 'ja',
       type: 'PlainText',
       value: `想定しないスロット名です。カスタムスロットの名前が正しいかご確認ください。`
-    }
-    responseHelper.setSimpleSpeech(speech)
-    return
+    };
+    responseHelper.setSimpleSpeech(speech);
+    return;
   }
   // Slotに登録されていない星座はnullになる
   if(slots.zodiac_signs == null) {
-    speech = {
+    var speech = {
       lang: 'ja',
       type: 'PlainText',
       value: `星座に誤りがあります。他の星座でお試し下さい。`
-    }
-    responseHelper.setSimpleSpeech(speech)
+    };
+    responseHelper.setSimpleSpeech(speech);
     // 第2引数にtrueを設定するとreprompt(入力が行われなかった場合の聞き返し)の文を定義できる
-    responseHelper.setSimpleSpeech(speech, true)
+    responseHelper.setSimpleSpeech(speech, true);
     // 下記でも可
     /*
     responseHelper.setSimpleSpeech(
       clova.SpeechBuilder.createSpeechText(`星座に誤りがあります。他の星座でお試し下さい。`)
     );
     */
-    return
+    return;
   }
   // 「中吉」だと「なかよし」発生されてしまう
   const fortune = ['大吉', 'ちゅうきち', '小吉', '吉', '凶']
@@ -188,114 +212,185 @@ function FortuneIntent(responseHelper) {
   // 日と星座を元に運勢を決定。日が変わると違う運勢に。
   const fortuneToday = fortune[(new Date().getDate() + zodiacSigns.indexOf(slots.zodiac_signs)) % fortune.length]
 
-  speech = {
+  var speech = {
     lang: 'ja',
     type: 'PlainText',
     value: `${slots.zodiac_signs}の今日の運勢は${fortuneToday}です。${TEMPLATE_INQUIRY}`
-  }
-  responseHelper.setSimpleSpeech(speech)
-  responseHelper.setSimpleSpeech(speech, true)
+  };
+  responseHelper.setSimpleSpeech(speech);
 }  
 
 function GuideIntent(responseHelper) {
   console.log(`GuideIntent`);
-  speech = {
+  var speech = {
     lang: 'ja',
     type: 'PlainText',
     value: TEMPLATE_INQUIRY
-  }
-  responseHelper.setSimpleSpeech(speech)
-  responseHelper.setSimpleSpeech(speech, true)
+  };
+  responseHelper.setSimpleSpeech(speech);
 }
 
 function NotsupportIntent(responseHelper) {
   console.log(`NotsupportIntent`);
-  speech = {
+  var speech = {
     lang: 'ja',
     type: 'PlainText',
     value: `意図しない入力です。${TEMPLATE_INQUIRY}`
-  }
-  responseHelper.setSimpleSpeech(speech)
+  };
+  responseHelper.setSimpleSpeech(speech);
 }
 
 function InvalidIntent(responseHelper) {
   console.log(`InvalidIntent`);
-  speech = {
+  var speech = {
     lang: 'ja',
     type: 'PlainText',
     value: `想定しないインテントです。カスタムインテントの名前が正しいかご確認ください。`
-  }
-  responseHelper.setSimpleSpeech(speech)
+  };
+  responseHelper.setSimpleSpeech(speech);
 }
 
-var id = 6;
-function SetId(responseHelper) {
-  console.log(`SetId`);
+function SetIdIntent(responseHelper) {
+  console.log(`SetIdIntent`);
+  var user = GetUser(responseHelper);
   const slots = responseHelper.getSlots()
   console.log(slots);
-  var msg = 'IDがわかりません。';
+  var msg = 'IDがわかりません、「IDに3​をセットして」のように呼びかけて下さい。';
   if ('id' in slots && slots.id != null) {
-    id = slots.id;
-    msg = `IDを${id}に、設定しました。`
+    _id[user] = slots.id;
+    msg = `IDを${_id[user]}に、設定しました。`
   }
   var speech = {
     lang: 'ja',
     type: 'PlainText',
-    value: `${cntMsgs[count]}を、おしゃくします。`
-  }
-  responseHelper.setSimpleSpeech(speech)
+    value: msg
+  };
+  responseHelper.setSimpleSpeech(speech);
 }
 
-function GetId(responseHelper) {
-  console.log(`GetId`);
+function GetIdIntent(responseHelper) {
+  console.log(`GetIdIntent`);
+  var user = GetUser(responseHelper);
   var speech = {
     lang: 'ja',
     type: 'PlainText',
-    value: `IDは、${id}です。`
+    value: `IDは、${_id[user]}です。`
+  };
+  responseHelper.setSimpleSpeech(speech);
+}
+
+function SetBottleIntent(responseHelper) {
+  console.log(`SetBottleIntent`);
+  var user = GetUser(responseHelper);
+  const slots = responseHelper.getSlots()
+  console.log(slots);
+  var msg = 'わかりませんでした、「さんごー缶をセット」のように呼びかけて下さい。';
+  if ('kind' in slots && slots.kind != null) {
+    if (slots.kind == 'ビール') {
+      msg = `ビールの種類は何ですか？「さんごう缶」あるいは「ロング缶」あるいは「瓶ビール」と呼びかけて下さい。`
+    } else {
+      _count[user] = 0;
+      _kind[user] = slots.kind;
+      msg = `お酌するのは、${_kind[user]}です。`
+    }
   }
-  responseHelper.setSimpleSpeech(speech)
+  var speech = {
+    lang: 'ja',
+    type: 'PlainText',
+    value: msg
+  };
+  responseHelper.setSimpleSpeech(speech);
 }
 
 const cntMsgs = ['いっぱいめ', 'にはいめ', 'さんばいめ', 'よんはいめ', 'ごはいめ', 'ろっぱいめ', 'ななはいめ', 'はっぱいめ', 'きゅうはいめ', 'じゅっぱいめ']
-var count = 0;
 function PourIntent(responseHelper) {
   console.log(`PourIntent`);
+  var user = GetUser(responseHelper);
   const slots = responseHelper.getSlots();
   console.log(slots);
   if ('count' in slots && slots.count != null) {
-    count = cntMsgs.indexOf(slots.count);
+    _count[user] = cntMsgs.indexOf(slots.count);
   } else if('number' in slots && slots.number != null) {
-    count = slots.number - 1;
+    _count[user] = slots.number - 1;
   } else {
-    count = count > 10 ? 10 : count + 1;    
+    _count[user] = _count[user] > 9 ? 9 : _count[user];    
   }
+  console.log(user);
+  var tipMsg = tip(user);
   var speech = {
     lang: 'ja',
     type: 'PlainText',
-    value: `${cntMsgs[count]}を、おしゃくします。`
-  }
+    value: `${tipMsg}　${_kind[user]}、${cntMsgs[_count[user]]}を、おしゃくします。`
+  };
   responseHelper.setSimpleSpeech(speech);
-  setTimeout(move, 500);
+  setTimeout(move, 500, _id[user], _count[user]);   // 0.5秒後にお酌
+  ++_count[user];
 }
 
 function StopIntent(responseHelper) {
+  var user = GetUser(responseHelper);
+  setTimeout(move0, _id[user], 10);
+  setTimeout(move0, _id[user], 1000);
   console.log(`StopIntent`);
-  speech = {
+  var speech = {
     lang: 'ja',
     type: 'PlainText',
     value: `おしゃくを中止します。`
-  }
+  };
   responseHelper.setSimpleSpeech(speech);
 }
 
-const angle = [  10,  20,  30,  40,  50,  50,  50,  50,  50,  50];
-const wait  = [1000,1000,1000,1000,1000,1000,1000,1000,1000,1009];
-function move() {
-  console.log(`move`);
-  send(id, angle[count]);
-  setTimeout(move0, wait[count]);
+function GetUser(responseHelper) {
+  var user = responseHelper.getUser();
+  //console.log(user);
+  if (_count[user.userId] == null) {
+    _count[user.userId] = 0;
+  }
+  if (_id[user.userId] == null) {
+    _id[user.userId] = 6;
+  }
+  if (_kind[user.userId] == null) {
+    _kind[user.userId] = 'さんごー缶';
+  }
+  if (_tipTime[user.userId] == null) {
+    _tipTime[user.userId] = 0;
+  }
+  return user.userId;
 }
-function move0() {
+
+const angle = [  91,  22,  33,  44,  55,  56,  57,  58,  58,  50];
+const wait  = [1000,1000,1000,1000,2000,2000,2000,3000,3000,3009];
+function move(id, index) {
+  console.log(`move`);
+  send(id, angle[index]);
+  setTimeout(move0, wait[index]);
+}
+
+function move0(id) {
   console.log(`move0`);
-  send(id, 0);
+  send(id, 180);
+}
+
+function tip(user) {
+  var now = new Date().getTime();
+  var duration = now - _tipTime[user];
+  _tipTime[user] = now;
+  if (duration < 10000) {
+    return 'ピッチが早いね！！';
+  }
+  const msgs = [
+    '私は、２０１８年5月に養老乃瀧ハッカソンで産まれました。',
+    'お酒は百薬の長と呼ばれますが、飲み過ぎには気をつけてね！',
+    '飲んだら乗るな、乗るなら飲むな。',
+    '私は、小型コンピューター「ラズベリーパイ」で動いています。',
+    'お酒は、二十歳から！',
+    'ビールを一番飲むのは、チェコの人なんだって！',
+    '飲んでも飲まれるな、飲みすぎに注意だよ！',
+    'ビールの王冠のギザギザの数は21個なんだよ！',
+    '遠隔お酌はインターネットを使っているので海外の人からお酌してもらう事もできるよ！',
+    '缶酎ハイは1983年生まれ、東京ディズニーランドと一緒だよ！',
+  ];
+  _tipIndex = _tipIndex >= (msgs.length -1) ? 0 : ++_tipIndex;
+  var msg = msgs[_tipIndex];
+  return msg;
 }
