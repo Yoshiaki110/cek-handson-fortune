@@ -87,6 +87,7 @@ var _id = [];
 var _kind = [];//'さんごー缶';
 var _tipTime = [];//new Date().getTime();
 var _tipIndex = 0;
+var _timeoutIndex = 0;
 
 const clovaSkillHandler = clova.Client
   .configureSkill()
@@ -100,14 +101,14 @@ const clovaSkillHandler = clova.Client
       type: 'PlainText',
       value: `こんにちは、私は「遠隔お酌」です。一緒に楽しい時間を過ごしましょうね。${TEMPLATE_INQUIRY}`,
     });
-    GetUser(responseHelper);    // ユーザごとの初期値を設定するため
+    var user = GetUser(responseHelper);
+    _count[user] = 0;
   })
   // カスタムインテント or ビルトインインテント
   .onIntentRequest(responseHelper => {
     console.log(`onIntentRequest`);
     TimeoutMessage(responseHelper);
     const intent = responseHelper.getIntentName();
-//    let speech;
     switch (intent) {
       // ユーザーのインプットが星座だと判別された場合。
       case 'SetIdIntent':
@@ -121,6 +122,9 @@ const clovaSkillHandler = clova.Client
         break;
       case 'PourIntent':
         PourIntent(responseHelper);
+        break;
+      case 'AngleIntent':
+        AngleIntent(responseHelper);
         break;
       case 'AbortIntent':
       case 'StopIntent':
@@ -166,10 +170,15 @@ app.listen(port, () => {
 });
 
 function TimeoutMessage(responseHelper) {
+  var msg ='もう一杯どうですか？。';
+  if (++_timeoutIndex > 5) {
+    msg ='起きていますか？、眠るときはベッドに入ってくださいね。';
+    _timeoutIndex = 0;
+  }
   var speech = {
     lang: 'ja',
     type: 'PlainText',
-    value: `もう一杯どうですか？。${TEMPLATE_INQUIRY}`
+    value: `${msg}。${TEMPLATE_INQUIRY}`
   };
   responseHelper.setSimpleSpeech(speech, true);
 }
@@ -303,6 +312,7 @@ function SetBottleIntent(responseHelper) {
 }
 
 const cntMsgs = ['いっぱいめ', 'にはいめ', 'さんばいめ', 'よんはいめ', 'ごはいめ', 'ろっぱいめ', 'ななはいめ', 'はっぱいめ', 'きゅうはいめ', 'じゅっぱいめ']
+const cntSayMsgs = ['いっぱいめ', 'に杯め', 'さんばいめ', 'よんはいめ', 'ごはいめ', 'ろっぱいめ', 'ななはいめ', 'はっぱいめ', 'きゅうはいめ', 'じゅっぱいめ']
 function PourIntent(responseHelper) {
   console.log(`PourIntent`);
   var user = GetUser(responseHelper);
@@ -320,17 +330,40 @@ function PourIntent(responseHelper) {
   var speech = {
     lang: 'ja',
     type: 'PlainText',
-    value: `${tipMsg}　${_kind[user]}、${cntMsgs[_count[user]]}を、おしゃくします。`
+    value: `${tipMsg}　${_kind[user]}、${cntSayMsgs[_count[user]]}を、おしゃくします。`
   };
   responseHelper.setSimpleSpeech(speech);
-  setTimeout(move, 500, _id[user], _count[user]);   // 0.5秒後にお酌
+  setTimeout(move, 1500, _id[user], _count[user]);   // 0.5秒後にお酌
   ++_count[user];
+}
+
+function AngleIntent(responseHelper) {
+  console.log(`AngleIntent`);
+  var user = GetUser(responseHelper);
+  const slots = responseHelper.getSlots();
+  console.log(slots);
+  var angle = 0;
+  var duration = 0;
+  if ('angle' in slots && slots.angle != null) {
+    angle = slots.angle;
+  }
+  if('duration' in slots && slots.duration != null) {
+    duration = slots.duration;
+  }
+  var speech = {
+    lang: 'ja',
+    type: 'PlainText',
+    value: `${angle}度　${duration}秒、傾けます。`
+  };
+  responseHelper.setSimpleSpeech(speech);
+  setTimeout(send, 1000, _id[user], angle);
+  setTimeout(send, 1000 + (duration * 1000), _id[user], 180);
 }
 
 function StopIntent(responseHelper) {
   var user = GetUser(responseHelper);
-  setTimeout(move0, _id[user], 10);
-  setTimeout(move0, _id[user], 1000);
+  setTimeout(move0, 10, _id[user]);
+  setTimeout(move0, 1000, _id[user]);
   console.log(`StopIntent`);
   var speech = {
     lang: 'ja',
@@ -347,7 +380,7 @@ function GetUser(responseHelper) {
     _count[user.userId] = 0;
   }
   if (_id[user.userId] == null) {
-    _id[user.userId] = 6;
+    _id[user.userId] = 4;
   }
   if (_kind[user.userId] == null) {
     _kind[user.userId] = 'さんごー缶';
@@ -358,12 +391,12 @@ function GetUser(responseHelper) {
   return user.userId;
 }
 
-const angle = [  91,  22,  33,  44,  55,  56,  57,  58,  58,  50];
-const wait  = [1000,1000,1000,1000,2000,2000,2000,3000,3000,3009];
+const angle = [  91,  82,  73,  64,  65,  66,  67,  68,  68,  60];
+const wait  = [3000,3000,3000,4000,5000,5000,5000,5000,5000,5009];
 function move(id, index) {
   console.log(`move`);
   send(id, angle[index]);
-  setTimeout(move0, wait[index]);
+  setTimeout(move0, wait[index], id);
 }
 
 function move0(id) {
@@ -379,7 +412,7 @@ function tip(user) {
     return 'ピッチが早いね！！';
   }
   const msgs = [
-    '私は、２０１８年5月に養老乃瀧ハッカソンで産まれました。',
+    '私は、2018年5月に養老乃瀧ハッカソンで産まれました。',
     'お酒は百薬の長と呼ばれますが、飲み過ぎには気をつけてね！',
     '飲んだら乗るな、乗るなら飲むな。',
     '私は、小型コンピューター「ラズベリーパイ」で動いています。',
