@@ -333,7 +333,7 @@ function PourIntent(responseHelper) {
     value: `${tipMsg}　${_kind[user]}、${cntSayMsgs[_count[user]]}を、おしゃくします。`
   };
   responseHelper.setSimpleSpeech(speech);
-  setTimeout(move, 1500, _id[user], _count[user]);   // 0.5秒後にお酌
+  setTimeout(move, 1500, _id[user], _kind[user], _count[user]);   // 0.5秒後にお酌
   ++_count[user];
 }
 
@@ -380,10 +380,12 @@ function GetUser(responseHelper) {
     _count[user.userId] = 0;
   }
   if (_id[user.userId] == null) {
-    _id[user.userId] = 4;
+    _id[user.userId] = 5;
   }
   if (_kind[user.userId] == null) {
-    _kind[user.userId] = 'さんごー缶';
+//    _kind[user.userId] = 'さんごー缶';
+//    _kind[user.userId] = '瓶ビール';
+    _kind[user.userId] = '日本酒';
   }
   if (_tipTime[user.userId] == null) {
     _tipTime[user.userId] = 0;
@@ -391,12 +393,32 @@ function GetUser(responseHelper) {
   return user.userId;
 }
 
-const angle = [  91,  82,  73,  64,  65,  66,  67,  68,  68,  60];
-const wait  = [3000,3000,3000,4000,5000,5000,5000,5000,5000,5009];
-function move(id, index) {
+const angle = {
+  ジュース:     [ 91,  81,  71,  61,  61,  61,  61,  61,  61,  61],
+  コーラ:       [ 92,  82,  72,  62,  62,  62,  62,  62,  62,  62],
+  缶チューハイ: [ 91,  82,  73,  64,  65,  66,  67,  68,  68,  60],
+  日本酒:       [120, 110, 100,  92,  85,  70,  60,  60,  60,  60],
+  さんごー缶:   [ 91,  82,  83,  74,  65,  66,  67,  68,  68,  60],
+  瓶ビール:     [ 99,  95,  90,  85,  83,  80,  75,  75,  75,  75],
+  徳利:         [120, 110, 100,  92,  85,  70,  60,  60,  60,  60],
+  ワイン:       [ 91,  82,  73,  64,  65,  66,  67,  68,  68,  60],
+  ロング缶:     [ 91,  82,  73,  64,  65,  66,  67,  68,  68,  60],
+};
+const wait = {
+  ジュース:     [3001,3002,3003,4004,5005,5006,5007,5008,5009,5000],
+  コーラ:       [3011,3012,3013,4014,5015,5016,5017,5018,5019,5010],
+  缶チューハイ: [3021,3022,3023,4024,5025,5026,5027,5028,5029,5020],
+  日本酒:       [3031,3032,3033,3034,3035,4036,4037,3038,4039,4030],
+  さんごー缶:   [3041,3042,3043,4044,5045,5046,5047,5048,5049,5040],
+  瓶ビール:     [3451,3452,3553,3554,3555,3556,3557,3558,4059,4050],
+  徳利:         [3031,3032,3033,3034,3035,4036,4037,3038,4039,4030],
+  ワイン:       [3071,3072,3073,4074,5075,5076,5077,5078,5079,5070],
+  ロング缶:     [3081,3082,3083,4084,5085,5086,5087,5088,5089,5080],
+};
+function move(id, kind, index) {
   console.log(`move`);
-  send(id, angle[index]);
-  setTimeout(move0, wait[index], id);
+  send(id, angle[kind][index]);
+  setTimeout(move0, wait[kind][index], id);
 }
 
 function move0(id) {
